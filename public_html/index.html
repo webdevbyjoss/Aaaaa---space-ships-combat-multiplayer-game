@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<!--[if IE]>
+		<script src="js/flashcanvas/bin/flashcanvas.js"></script>
+	<![endif]-->
+	<script src="js/jsGameSoup/js/jsgamesoup.js"></script>
+	<script src="js/jsGameSoup/js/random.js"></script>
+	<script src="js/jsGameSoup/js/collisions.js"></script>
+	<script src="js/map.js"></script>
+	<script src="js/Aaaaa.js"></script>
+	<script src="js/jquery-1.4.2.min.js"></script>
+<style>
+html, body {
+	height: 100%;         /* required */
+	font-family: "Arial";
+	width: 100%;
+}
+body {
+	text-align: center;   /* horizontal centering hack for IE */
+	padding: 0;           /* required to "hide" distance div */
+	margin: 0;            /* required to "hide" distance div */
+	overflow: hidden;
+	height: 100%;
+	width: 100%;
+}
+</style>
+</head>
+<body>
+	<div id="content">
+		<canvas id='Aaaaa' jsgs="runAaaaa" fps="25" width="1000" height="800"></canvas>
+	</div>
+	<script type="text/javascript">
+	var c = document.getElementById("Aaaaa");
+	c.height = window.screen.height;
+	c.width = window.screen.width;
+	</script>
+</body>
+</html>
