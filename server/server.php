@@ -29,9 +29,9 @@ $_SERVER['SERVER_NAME'] = 'localhost'; // small hack to bootstrap
 
 // init db connection
 $dbConfig = include(APPLICATION_PATH . '/config.php');
+
+// TODO: move to PDO and drop Zend Framework completely
 $db = Zend_Db::factory('Mysqli', $dbConfig);
-
-
 
 error_reporting ( E_ALL );
 
@@ -91,8 +91,6 @@ function handleClient($msgsock) {
 	// say hello to client
 	doHandshake($msgsock);
 	
-	echo "Got correct handshake\n";
-	
 	// use lib to encode/decode websocket frames
 	// thanks to: http://code.google.com/p/phpws/source/browse/phpws/websocket.framing.php
 	require_once 'websocket.framing.php';
@@ -125,6 +123,7 @@ function handleClient($msgsock) {
 		 */
 		if (empty($data['id'])) {
 			$id = $s->updatePlayer($data);
+			echo "New player with ID: $id\n";
 		} else {
 			$id = $s->updatePlayer($data, $data['id']);
 		}

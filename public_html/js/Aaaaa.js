@@ -1,5 +1,6 @@
-var WS_API_URL = 'ws://127.0.0.1:9999/';
+var WS_API_URL = 'ws://aaaaa.localhost:9999/';
 var pi2 = Math.PI * 2;
+var ws = null;
 
 // credits to 
 // https://github.com/sebleedelisle/JavaScript-PixelPounding-demos/blob/master/1_Particles/js/ImageParticle.js
@@ -172,7 +173,7 @@ function runAaaaa(gs) {
 	}
 	
 	/*** World ***/
-	function World() {
+	function World(gs) {
 		this.player = null;
 		this.players = new Array();
 		this.x = 0;
@@ -256,7 +257,7 @@ function runAaaaa(gs) {
 					allasteroids = allasteroids.concat(asteroids);
 					for (var a=0; a<asteroids.length; a++) {
 						if (!asteroidcache[asteroids[a]]) {
-							asteroidcache[asteroids[a]] = new Asteroid(w, map.getAsteroidData(asteroids[a], quadrantData['asteroidSize']), quadrantData['asteroidSize'], pos);
+							asteroidcache[asteroids[a]] = new Asteroid(this, map.getAsteroidData(asteroids[a], quadrantData['asteroidSize']), quadrantData['asteroidSize'], pos);
 							asteroidcachesize += 1;
 							gs.addEntity(asteroidcache[asteroids[a]]);
 						}
@@ -292,126 +293,6 @@ function runAaaaa(gs) {
 		}
 		*/
 	}
-	
-	/**
-	 * Multiplayer client 
-	 */
-	/*
-	function Multiplayer() {
-		this.apiUrl = 'api.php';
-		
-		// hold timediff here
-		this.timediff = 0;
-		
-		// sync flag to avoid concurent sync calls
-		this.inSync = false;
-		
-		// perform actual sync of multiplayer data
-		this.sync = function(w) {
-			// don't sync again if previous data syn process is still not finished
-			if (this.inSync) {
-				return;
-			}
-			this.inSync = true;
-			
-			// just to make our life easier
-			var p = w.player;
-			
-			// send my data to server via AJAX call
-			// and receive the data about other players and their positions
-			var postData = {id:p.id, x:p.x, y:p.y, angle:p.angle, speed:p.speed, action:p.action};
-			
-			// save start timestamp to measure latency in miliseconds
-			var timestamp_start = new Date().getTime();
-
-			// init local variable to refer self object in lambdas
-			// TODO: f**k, this is ugly. we should find a better way to implement this
-			var self = this;
-			
-			// perform request
-			// TODO: jquery is quite slow here, possibly try to use some other AJAX method
-			$.post(this.apiUrl, postData, function(data) {
-			   
-			   // calculate latency
-			   var timestamp_end = new Date().getTime();
-			   self.timediff = timestamp_end - timestamp_start;
-			   
-			   // update players data
-			   self.updatePlayers(w, data.players);
-			   
-			   // remove block
-			   self.inSync = false;
-			});
-		};
-		
-		this.updatePlayers = function(w, newData) {
-			var ps = w.players;
-			
-			// detect which players should be removed from world
-			for (i in newData) {
-				if (!newData.hasOwnProperty(i)) {
-					continue;
-				}
-				
-				var id = newData[i].id;
-				
-				// skip the players own ship
-				if (id == w.player.id) {
-					continue;
-				}
-				
-				// reset player object and start next iteration
-				p = null;
-				
-				// detect if new player should be added to the world
-				if (!ps[id]) {
-					// create new player
-					p = new Ship(w);
-					ps[id] = p; 
-					gs.addEntity(p);
-				}
-				
-				// update coordinates of existent player
-				p = ps[id];
-				p.x = newData[i].x;
-				p.y = newData[i].y;
-				p.angle = newData[i].angle;
-				p.speed = newData[i].speed;
-				p.action = newData[i].action;
-			}
-		};
-		
-		this.init = function(w) {
-			// just to make our life easier
-			var p = w.player;
-			
-			// init local variable to refer self object in lambdas
-			// TODO: f**k, this is ugly. we should find a better way to implement this
-			var self = this;
-			
-			var postData = {x:p.x, y:p.y, angle:p.angle, speed:p.speed, action:p.action};
-			
-			// if we have player ID in hash, then lets just use it
-			if (location.hash) {
-				postData.id = parseInt(location.hash.substring(1));
-			}
-			
-			$.post(this.apiUrl, postData, function(data){
-				// assign player's unique ID
-				p.id = data.id;
-				
-				// lets write this value into location hash to get it from 
-				location.hash = "#" + data.id;
-				
-				// update positions of other players
-				self.updatePlayers(w, data.players);
-			});
-		};
-		
-	}
-	
-	*/
-	
 	
 
 	/*** reload the game ***/
@@ -730,8 +611,6 @@ function runAaaaa(gs) {
 	
 	
 	function MultiplayerWebSockets(w) {
-		// WebSocket API URL
-		this.apiUrl = WS_API_URL;
 		
 		// hold timediff here
 		this.timediff = 0;
@@ -807,9 +686,15 @@ function runAaaaa(gs) {
 			}
 		};
 		
-		this.init = function(w) {
+		this.init = function(w, ws) {
+			
+			// Indicate that we are exchanging data with server right now, 
+			// so avoid any other asynchronous operations
+			this.inSync = true;
+			
 			// just to make our life easier
 			var p = w.player;
+			this.ws = ws; // WebSocket object
 			
 			// init local variable to refer self object in lambdas
 			// TODO: f**k, this is ugly. we should find a better way to implement this
@@ -818,23 +703,18 @@ function runAaaaa(gs) {
 			var postData = {x:p.x, y:p.y, angle:p.angle, speed:p.speed, action:p.action};
 			
 			// if we have player ID in hash, then lets just use it
-			if (location.hash) {
+			if (location.hash !== "") {
 				postData.id = parseInt(location.hash.substring(1));
 			}
 			
-			// init websocket connection
-			this.ws = new WebSocket(this.apiUrl);
-			console.log(this.ws);
+	        // if player enters the page for the first time 
+	        // enter transparent registration and produce unique ID for this player 
+			// or just send initial request to get initial players positions
+        	var reqStr = JSON.stringify(postData); // NOTE: adding extra space due to bug in server that eats last symbol
+			ws.send(reqStr);
 			
-			this.ws.onerror = function(env) {
-				console.log(env);
-				alert("Error connecting socket: " + this.apiUrl);
-			};
-
 			// add new onmessage handler
 			this.ws.onmessage = function(e) {
-				
-				console.log('got responce: ' + e.data);
 				
 				// update players data
 				var data = JSON.parse(e.data);
@@ -848,7 +728,7 @@ function runAaaaa(gs) {
 				// update positions of other players
 				self.updatePlayers(w, data.players);
 				
-				// add new onmessage handler
+				// add new permanent onmessage handler
 				self.ws.onmessage = function(e) {
 					// calculate latency
 					var timestamp_end = new Date().getTime();
@@ -863,44 +743,53 @@ function runAaaaa(gs) {
 		        };
 	        };
 			
-	        this.ws.onopen = function (e) {
-				// perform request
-		        console.log('connection ready');
-		        var reqStr = JSON.stringify(postData); // NOTE: adding extra space due to bug in server that eats last symbol
-		        console.log('sending: ' + reqStr);
-				this.send(reqStr);
-	        };
-
 		};
 	}
 	
 
 	
+	// init websocket connection
+	// WebSocket API URL
+	console.log("Connecting to server " + WS_API_URL);
 	
+	// TODO: draw beautifull animation for "Loading..." process
 	
+	ws = new WebSocket(WS_API_URL);
+	ws.onerror = function(env) {
+		console.log("Error connecting socket: " + WS_API_URL);
+		console.log(env);
+		console.log(ws);
+	};
 	
-	// init world
-	var w = new World(gs);
+	ws.onopen = function (e) {
+		// perform initial request
+		console.log('connection ready');
+		
+		// init world
+		var w = new World(gs);
 
-	// lets print out "Loading..." and wait for initial user data to load
-	gs.addEntity(w);
-	
-	// init background stars
-	for (var n = 0; n < 50; n++) {
-		gs.addEntity(new Star(w));
+		// lets print out "Loading..." and wait for initial user data to load
+		gs.addEntity(w);
+		
+		// init background stars
+		for (var n = 0; n < 50; n++) {
+			gs.addEntity(new Star(w));
+		}
+		
+		// init main player's ship
+		var playersShip = new Ship(w);
+
+		// add keyboard controll methods 
+		var psc = new PlayersShipControl();
+		psc.mixin(playersShip);
+
+		// run multiplayer and init players' ships
+		w.setPlayer(playersShip);
+		w.mp.init(w, ws);
+		
+		// add to game engine
+		gs.addEntity(playersShip);
 	}
-	
-	// init main player's ship
-	var playersShip = new Ship(w);
 
-	// add keyboard controll methods 
-	var psc = new PlayersShipControl();
-	psc.mixin(playersShip);
-
-	// run multiplayer and init players' ships
-	w.setPlayer(playersShip);
-	w.mp.init(w);
 	
-	// add to game engine
-	gs.addEntity(playersShip);
 }
