@@ -415,7 +415,7 @@ function runAaaaa(gs) {
 		this.x = gs.width / 2;
 		this.y = gs.height / 2;
 		this.angle = 0;
-		this.speed = 10;
+		this.speed = 1;
 		this.maxspeed = 0.0;
 		this.turnRate = 0.12;
 		this.accel = 0.2;
@@ -622,6 +622,9 @@ function runAaaaa(gs) {
 		// save the game world
 		this.w = w;
 		
+		// WebSocket connection
+		this.ws = null;
+		
 		// refer to this object from within closure
 		var self = this;
 		
@@ -645,7 +648,6 @@ function runAaaaa(gs) {
 
 			// perform request
 	        var reqStr = JSON.stringify(postData); // NOTE: adding extra space due to bug in server that eats last symbol
-	        console.log('sending: ' + reqStr);
 			this.ws.send(reqStr);
 		};
 		
@@ -741,18 +743,53 @@ function runAaaaa(gs) {
 					// remove block
 					self.inSync = false;
 		        };
+		        
+		        // start the multiplayer sync
+		        self.inSync = false;
 	        };
 			
 		};
 	}
 	
-
+	function SplashScreen() {
+		
+		this.timeout = 7000;
+		this.timestart = new Date().getTime();
+		this.time = this.timestart;
+		this.timeleft = 0;
+		this.message = "Connecting to server...";
+		
+		this.update = function() {
+			
+			this.time = new Date().getTime();
+			this.timeleft = this.timeout - (this.time - this.timestart);
+			
+			if (this.timeleft < 0) {
+				this.message = "Connecting to server... [ connection failed ] ";
+				return;
+			}
+			
+			if (this.timeleft < 5000) {
+				this.message = "Connecting to server...  " + Math.round(this.timeleft / 1000); 
+			}
+		}
+		
+		this.draw = function (c) {
+			gs.clear();
+			gs.background('rgba(255, 255, 255, 1.0)');
+			c.font = "15pt Calibri";
+			c.fillStyle = "#000000"; // text color
+			c.fillText(this.message, 30, 30);
+		};
+	}
 	
 	// init websocket connection
 	// WebSocket API URL
 	console.log("Connecting to server " + WS_API_URL);
 	
 	// TODO: draw beautifull animation for "Loading..." process
+	var splash = new SplashScreen();
+	gs.addEntity(splash);
 	
 	ws = new WebSocket(WS_API_URL);
 	ws.onerror = function(env) {
@@ -764,6 +801,9 @@ function runAaaaa(gs) {
 	ws.onopen = function (e) {
 		// perform initial request
 		console.log('connection ready');
+		
+		// destroy splash screen and init the game world
+		gs.delEntity(splash);
 		
 		// init world
 		var w = new World(gs);
@@ -789,7 +829,7 @@ function runAaaaa(gs) {
 		
 		// add to game engine
 		gs.addEntity(playersShip);
-	}
+	};
 
 	
 }
